@@ -296,17 +296,40 @@ def getPath(destination,queue):
         return queue
     if destination.parent == None:
         queue.append(destination)
+        return queue
     else:
         queue.append(destination)
         getPath(destination.parent ,queue)
-    return queue
+        
+
+def isLegal(current, obstacles, i, j):
+    x, y, parent = current.x, current.y, current.parent
+
+    isOnScreen = x >= 0 and x <= GRID_WIDTH and y >= 0 and y <= GRID_HEIGHT
+    isObstacle = False
+    isGoingBack = False
+    isMoveLegal = i == 0 or j == 0
+
+    if parent == None:
+        pass
+    elif x == parent.x and y == parent.y:
+        isGoingBack == True
+
+    for ob in obstacles:
+        for o in ob:
+            if o.position.x == x and o.position.y == y:
+                isObstacle = True
+
+    if isOnScreen and not isObstacle and not isGoingBack and isMoveLegal:
+        return True
+    return False
     
 
 class Leaf:
-    def __init__(self, x, y, parent):
+    def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.parent = parent
+        self.parent = None
     
     def setParent(self, otherLeaf):
         self.parent = otherLeaf
@@ -314,26 +337,30 @@ class Leaf:
 class SearchBasedPlayer(Player):
     def __init__(self):
         super(SearchBasedPlayer, self).__init__()
+        
 
     def turn(self, direction: Direction):
         self.chosen_path.append(direction)
 
     def writePath(self, path):
-        current_position = path[0]
-        for i in range(1,len(path)):
-            if path[i].x > current_position.x:
+        if len(path) != 0:
+            current_position = path[0]
+            if path[1].x > current_position.x:
                 self.chosen_path.append(Direction.RIGHT)
-            if path[i].x < current_position.x:
+            if path[1].x < current_position.x:
                 self.chosen_path.append(Direction.LEFT)
-            if path[i].y > current_position.y:
+            if path[1].y > current_position.y:
                 self.chosen_path.append(Direction.DOWN)
-            if path[i].y < current_position.y:
+            if path[1].y < current_position.y:
                 self.chosen_path.append(Direction.UP)
+            if path[1].x == current_position.x and path[1].y == current_position.y:
+                pass
+            #print("myPos", path[0].x, path[0].y , " Next Pos: ", path[1].x, path[1].y )
 
 
 
 
-    def BFS(self, snake: Snake, food: Food):
+    def BFS(self, snake: Snake, food: Food, obstacles: Set[Obstacle]):
         root_x = snake.get_head_position().x
         root_y = snake.get_head_position().y
 
@@ -341,7 +368,7 @@ class SearchBasedPlayer(Player):
 
         mySet = set()
         myQueue = []
-        root = Leaf(root_x, root_y, None)
+        root = Leaf(root_x, root_y)
         myQueue.append(root)
 
         while len(myQueue) != 0 and isPathFound==False:
@@ -349,33 +376,29 @@ class SearchBasedPlayer(Player):
             current = myQueue.pop()
             myQueue.reverse()
             if current.x == food.position.x and current.y == food.position.y:
-                print("FIND PATH !!")
                 return current
             else:
                 for i in range(-1,2):
                     for j in range(-1,2):
-                        if i == 0 or j == 0:
-                            if current.x+i > 0 and current.x+i < GRID_WIDTH+1 and current.y+j > 0 and current.y+j < GRID_HEIGHT+1:
-                                newNode = Leaf(current.x+i,current.y+j, None)
-                                if isElementExistInSet(mySet, newNode) == False:
-                                    newNode.setParent(current)
-                                    mySet.add(newNode)
-                                    myQueue.append(newNode)
+                        if isLegal(current, obstacles, i, j):
+                            newNode = Leaf(current.x+i,current.y+j)
+                            if isElementExistInSet(mySet, newNode) == False:
+                                newNode.setParent(current)
+                                mySet.add(newNode)
+                                myQueue.append(newNode)
+        print("No path found")
 
     def search_path(self, snake: Snake, food: Food, *obstacles: Set[Obstacle]):
         root_x, root_y = snake.get_head_position().x, snake.get_head_position().y
 
+        print("Current Position: ", root_x, root_y)
 
-        
 
-
-        if root_x == food.position.x or root_y == food.position.y :
-            path = []
-            destination = self.BFS(snake, food)
-            getPath(destination, path)
-            path.reverse()
-            self.writePath(path)
-
+        path = []
+        destination = self.BFS(snake, food, obstacles)
+        getPath(destination, path)
+        path.reverse()
+        self.writePath(path)
 
 
 
@@ -383,7 +406,7 @@ class SearchBasedPlayer(Player):
 
 if __name__ == "__main__":
     snake = Snake(WIDTH, WIDTH, INIT_LENGTH)
-    player = HumanPlayer()
+    #player = HumanPlayer()
     player = SearchBasedPlayer()
     game = SnakeGame(snake, player)
     game.run()
