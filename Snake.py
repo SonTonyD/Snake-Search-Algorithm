@@ -26,6 +26,7 @@ OBSTACLE_COL = (209, 59, 59)
 VISITED_COL = (24, 42, 142)
 
 
+
 @unique
 class Direction(tuple, Enum):
     UP = (0, -1)
@@ -284,14 +285,98 @@ class HumanPlayer(Player):
 # DO NOT MODIFY CODE ABOVE THIS LINE
 # ----------------------------------
 
+def isElementExistInSet(set, myElement):
+    for element in set:
+        if element.x == myElement.x and element.y == myElement.y:
+            return True
+    return False
+
+def getPath(destination,queue):
+    if destination == None:
+        return queue
+    if destination.parent == None:
+        queue.append(destination)
+    else:
+        queue.append(destination)
+        getPath(destination.parent ,queue)
+    return queue
+    
+
+class Leaf:
+    def __init__(self, x, y, parent):
+        self.x = x
+        self.y = y
+        self.parent = parent
+    
+    def setParent(self, otherLeaf):
+        self.parent = otherLeaf
 
 class SearchBasedPlayer(Player):
     def __init__(self):
         super(SearchBasedPlayer, self).__init__()
 
+    def turn(self, direction: Direction):
+        self.chosen_path.append(direction)
+
+    def writePath(self, path):
+        current_position = path[0]
+        for i in range(1,len(path)):
+            if path[i].x > current_position.x:
+                self.chosen_path.append(Direction.RIGHT)
+            if path[i].x < current_position.x:
+                self.chosen_path.append(Direction.LEFT)
+            if path[i].y > current_position.y:
+                self.chosen_path.append(Direction.DOWN)
+            if path[i].y < current_position.y:
+                self.chosen_path.append(Direction.UP)
+
+
+
+
+    def BFS(self, snake: Snake, food: Food):
+        root_x = snake.get_head_position().x
+        root_y = snake.get_head_position().y
+
+        isPathFound = False
+
+        mySet = set()
+        myQueue = []
+        root = Leaf(root_x, root_y, None)
+        myQueue.append(root)
+
+        while len(myQueue) != 0 and isPathFound==False:
+            myQueue.reverse()
+            current = myQueue.pop()
+            myQueue.reverse()
+            if current.x == food.position.x and current.y == food.position.y:
+                print("FIND PATH !!")
+                return current
+            else:
+                for i in range(-1,2):
+                    for j in range(-1,2):
+                        if i == 0 or j == 0:
+                            if current.x+i > 0 and current.x+i < GRID_WIDTH+1 and current.y+j > 0 and current.y+j < GRID_HEIGHT+1:
+                                newNode = Leaf(current.x+i,current.y+j, None)
+                                if isElementExistInSet(mySet, newNode) == False:
+                                    newNode.setParent(current)
+                                    mySet.add(newNode)
+                                    myQueue.append(newNode)
+
     def search_path(self, snake: Snake, food: Food, *obstacles: Set[Obstacle]):
+        root_x, root_y = snake.get_head_position().x, snake.get_head_position().y
+
+
         
-        pass
+
+
+        if root_x == food.position.x or root_y == food.position.y :
+            path = []
+            destination = self.BFS(snake, food)
+            getPath(destination, path)
+            path.reverse()
+            self.writePath(path)
+
+
 
 
 
