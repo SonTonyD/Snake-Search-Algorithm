@@ -5,11 +5,12 @@ import pygame
 from enum import Enum, unique
 import sys
 import random
+import math
 
 
 FPS = 15
 
-INIT_LENGTH = 60
+INIT_LENGTH = 1
 
 WIDTH = 480
 HEIGHT = 480
@@ -355,12 +356,27 @@ class SearchBasedPlayer(Player):
             return True
         return False
 
+    def getNearestObstacle(self, snake: Snake, obstacles: Set[Obstacle]):
+        root_x, root_y = snake.get_head_position().x, snake.get_head_position().y
+        min_distance = 5000
+        target_x = 0
+        target_y = 0
+
+        for ob in obstacles:
+            for o in ob:
+                distance = math.sqrt(math.pow(root_x - o.position.x,2) + math.pow(root_y - o.position.y ,2))
+                if min_distance > distance:
+                    min_distance = distance
+                    target_x = o.position.x
+                    target_y = o.position.y
+        return target_x, target_y
+                    
     
 
     def turn(self, direction: Direction):
         self.chosen_path.append(direction)
 
-    def writePath(self, path):
+    def followPath(self, path):
         if len(path) != 0:
             current_position = path[0]
             if path[1].x > current_position.x:
@@ -392,7 +408,7 @@ class SearchBasedPlayer(Player):
             myQueue.reverse()
             current = myQueue.pop()
             myQueue.reverse()
-            if current.x == food.position.x and current.y == food.position.y:
+            if current.x == food[0] and current.y == food[1]:
                 return current
             else:
                 for i in range(-1,2):
@@ -406,6 +422,8 @@ class SearchBasedPlayer(Player):
 
     def search_path(self, snake: Snake, food: Food, *obstacles: Set[Obstacle]):
         root_x, root_y = snake.get_head_position().x, snake.get_head_position().y
+        food_x, food_y = food.position.x, food.position.y
+        food = (food_x, food_y)
         #print("Current Position", root_x, root_y)
         self.visited.append(Position(root_x,root_y))
 
@@ -413,6 +431,7 @@ class SearchBasedPlayer(Player):
             self.visited.reverse()
             self.visited.pop()
             self.visited.reverse()
+        
         #print(self.visited)
 
         destination = self.BFS(snake, food, obstacles, self.isLegal)
@@ -423,11 +442,15 @@ class SearchBasedPlayer(Player):
         getPath(destination, path)
         path.reverse()
 
-        if len(path) == 0:
+        if snake.length > 40 or len(path) == 0:
             destination = self.BFS(snake, food, obstacles, self.isLegalLow)
             path = []
             getPath(destination, path)
             path.reverse()
+
+
+        
+
         
         
         """
@@ -436,7 +459,7 @@ class SearchBasedPlayer(Player):
             print(point.x, point.y)
         print("food: ", food.position.x, food.position.y)
         """ 
-        self.writePath(path)
+        self.followPath(path)
 
 
 
