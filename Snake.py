@@ -7,9 +7,9 @@ import sys
 import random
 
 
-FPS = 10
+FPS = 12
 
-INIT_LENGTH = 4
+INIT_LENGTH = 3
 
 WIDTH = 480
 HEIGHT = 480
@@ -301,28 +301,6 @@ def getPath(destination,queue):
         queue.append(destination)
         getPath(destination.parent ,queue)
         
-
-def isLegal(current, obstacles, i, j):
-    x, y, parent = current.x, current.y, current.parent
-
-    isOnScreen = x >= 0 and x <= GRID_WIDTH and y >= 0 and y <= GRID_HEIGHT
-    isObstacle = False
-    isGoingBack = False
-    isMoveLegal = i == 0 or j == 0
-
-    if parent == None:
-        pass
-    elif x == parent.x and y == parent.y:
-        isGoingBack == True
-
-    for ob in obstacles:
-        for o in ob:
-            if o.position.x == x and o.position.y == y:
-                isObstacle = True
-
-    if isOnScreen and not isObstacle and not isGoingBack and isMoveLegal:
-        return True
-    return False
     
 
 class Leaf:
@@ -337,7 +315,28 @@ class Leaf:
 class SearchBasedPlayer(Player):
     def __init__(self):
         super(SearchBasedPlayer, self).__init__()
+        self.visited = list(self.visited)
+    
+    def isLegal(self, current, obstacles, i, j, visitedNode, snake):
+        x, y = current.x+i, current.y+j
+
+        isOnScreen = x >= 0 and x < GRID_WIDTH and y >= 0 and y < GRID_HEIGHT
+        isObstacle = False
+        isGoingBack = False
+        isMoveLegal = i == 0 or j == 0
+
+        for node in visitedNode:
+            if x == node.x and y == node.y:
+                isGoingBack = True
         
+        for ob in obstacles:
+            for o in ob:
+                if o.position.x == x and o.position.y == y:
+                    isObstacle = True
+
+        if isOnScreen and not isObstacle and not isGoingBack and isMoveLegal:
+            return True
+        return False
 
     def turn(self, direction: Direction):
         self.chosen_path.append(direction)
@@ -355,6 +354,8 @@ class SearchBasedPlayer(Player):
                 self.chosen_path.append(Direction.UP)
             if path[1].x == current_position.x and path[1].y == current_position.y:
                 pass
+        else:
+            #print("path is empty")
             #print("myPos", path[0].x, path[0].y , " Next Pos: ", path[1].x, path[1].y )
 
 
@@ -363,6 +364,8 @@ class SearchBasedPlayer(Player):
     def BFS(self, snake: Snake, food: Food, obstacles: Set[Obstacle]):
         root_x = snake.get_head_position().x
         root_y = snake.get_head_position().y
+
+        
 
         isPathFound = False
 
@@ -380,24 +383,39 @@ class SearchBasedPlayer(Player):
             else:
                 for i in range(-1,2):
                     for j in range(-1,2):
-                        if isLegal(current, obstacles, i, j):
+                        if self.isLegal(current, obstacles, i, j, self.visited, snake):
                             newNode = Leaf(current.x+i,current.y+j)
                             if isElementExistInSet(mySet, newNode) == False:
                                 newNode.setParent(current)
                                 mySet.add(newNode)
                                 myQueue.append(newNode)
-        print("No path found")
+        #print("No path found")
 
     def search_path(self, snake: Snake, food: Food, *obstacles: Set[Obstacle]):
         root_x, root_y = snake.get_head_position().x, snake.get_head_position().y
+        #print("Current Position", root_x, root_y)
+        self.visited.append(Position(root_x,root_y))
 
-        print("Current Position: ", root_x, root_y)
+        if len(self.visited) > snake.length:
+            self.visited.reverse()
+            self.visited.pop()
+            self.visited.reverse()
+        #print(self.visited)
 
+        destination = self.BFS(snake, food, obstacles)
 
         path = []
-        destination = self.BFS(snake, food, obstacles)
         getPath(destination, path)
         path.reverse()
+
+        """
+        print("#################################")
+        for point in path:
+            print(point.x, point.y)
+        print("food: ", food.position.x, food.position.y)
+        """
+        
+        
         self.writePath(path)
 
 
