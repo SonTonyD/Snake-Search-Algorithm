@@ -301,6 +301,42 @@ def getPath(destination,queue):
     else:
         queue.append(destination)
         getPath(destination.parent ,queue)
+
+def blind_search(self, snake, food, obstacles):
+    root_x, root_y = snake.get_head_position().x, snake.get_head_position().y
+    food_x, food_y = food.position.x, food.position.y
+    food = (food_x, food_y)
+    #print("Current Position", root_x, root_y)
+    self.visited.append(Position(root_x,root_y))
+
+    while len(self.visited) > snake.length:
+        self.visited.reverse()
+        self.visited.pop()
+        self.visited.reverse()
+    
+    #print(self.visited)
+
+    destination = self.BFS(snake, food, obstacles, self.isLegal)
+
+    
+
+    path = []
+    getPath(destination, path)
+    path.reverse()
+
+    if snake.length > 50 or len(path) == 0:
+        destination = self.BFS(snake, food, obstacles, self.isLegalLow)
+        path = []
+        getPath(destination, path)
+        path.reverse()
+    """
+    print("#################################")
+    for point in path:
+        print(point.x, point.y)
+    print("food: ", food.position.x, food.position.y)
+    """ 
+    self.followPath(path)
+
         
     
 
@@ -420,46 +456,10 @@ class SearchBasedPlayer(Player):
                                 mySet.add(newNode)
                                 myQueue.append(newNode)
 
+    
+
     def search_path(self, snake: Snake, food: Food, *obstacles: Set[Obstacle]):
-        root_x, root_y = snake.get_head_position().x, snake.get_head_position().y
-        food_x, food_y = food.position.x, food.position.y
-        food = (food_x, food_y)
-        #print("Current Position", root_x, root_y)
-        self.visited.append(Position(root_x,root_y))
-
-        while len(self.visited) > snake.length:
-            self.visited.reverse()
-            self.visited.pop()
-            self.visited.reverse()
-        
-        #print(self.visited)
-
-        destination = self.BFS(snake, food, obstacles, self.isLegal)
-
-        
-
-        path = []
-        getPath(destination, path)
-        path.reverse()
-
-        if snake.length > 40 or len(path) == 0:
-            destination = self.BFS(snake, food, obstacles, self.isLegalLow)
-            path = []
-            getPath(destination, path)
-            path.reverse()
-
-
-        
-
-        
-        
-        """
-        print("#################################")
-        for point in path:
-            print(point.x, point.y)
-        print("food: ", food.position.x, food.position.y)
-        """ 
-        self.followPath(path)
+        blind_search(self, snake, food, obstacles)
 
 
 
