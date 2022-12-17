@@ -6,11 +6,13 @@ from enum import Enum, unique
 import sys
 import random
 import math
+import numpy as np
+from collections import defaultdict 
 
 
 FPS = 15
 
-INIT_LENGTH = 1
+INIT_LENGTH = 3
 
 WIDTH = 480
 HEIGHT = 480
@@ -292,7 +294,7 @@ def isElementExistInSet(set, myElement):
             return True
     return False
 
-def getPath(destination,queue):
+def getPath(destination, queue):
     if destination == None:
         return queue
     if destination.parent == None:
@@ -317,9 +319,6 @@ def blind_search(self, snake, food, obstacles):
     #print(self.visited)
 
     destination = self.BFS(snake, food, obstacles, self.isLegal)
-
-    
-
     path = []
     getPath(destination, path)
     path.reverse()
@@ -332,12 +331,54 @@ def blind_search(self, snake, food, obstacles):
     """
     print("#################################")
     for point in path:
-        print(point.x, point.y)
+        print(point.x, point.y)append
     print("food: ", food.position.x, food.position.y)
     """ 
     self.followPath(path)
 
-        
+#dijkstra
+def dijkstra_search(self, snake, food, obstacles):
+    root_x, root_y = snake.get_head_position().x, snake.get_head_position().y
+    #print("Current Position", root_x, root_y)
+    self.visited.append(Position(root_x,root_y))
+
+    while len(self.visited) > snake.length:
+        self.visited.reverse()
+        self.visited.pop()
+        self.visited.reverse()
+
+    dist, prev = self.dijkstra_v2(snake,food,obstacles)
+
+    stack = []
+    u = Position(food.position.x, food.position.y)
+    if prev[u.x, u.y] != None or u == Position(root_x, root_y):
+        while u != Position(root_x, root_y):
+            stack.insert(0,u)
+            u = prev[u.x, u.y]
+    
+    self.followPathDirect(stack, Position(root_x,root_y))
+
+
+
+def isObstacle(x,y, obstacles):
+    for ob in obstacles:
+        for o in ob:
+            if o.position.x == x and o.position.y == y:
+                return True
+    return False
+
+def isInTheMap(x,y):
+    if x >= 0 and x < GRID_WIDTH and y >= 0 and y < GRID_HEIGHT:
+        return True
+    return False
+
+class myGraph:
+    def __init__(self, V):
+        self.graph = defaultdict(list)
+        self.V = V
+
+    def addEdge(self, u, v, w):
+        self.graph[u].append([v, w])
     
 
 class Leaf:
@@ -412,6 +453,21 @@ class SearchBasedPlayer(Player):
     def turn(self, direction: Direction):
         self.chosen_path.append(direction)
 
+    def followPathDirect(self, path, current_position):
+        if len(path) != 0:
+            if path[0].x > current_position.x:
+                self.chosen_path.append(Direction.RIGHT)
+            if path[0].x < current_position.x:
+                self.chosen_path.append(Direction.LEFT)
+            if path[0].y > current_position.y:
+                self.chosen_path.append(Direction.DOWN)
+            if path[0].y < current_position.y:
+                self.chosen_path.append(Direction.UP)
+            if path[0].x == current_position.x and path[0].y == current_position.y:
+                pass
+        else:
+            print("path is empty")
+
     def followPath(self, path):
         if len(path) != 0:
             current_position = path[0]
@@ -428,6 +484,121 @@ class SearchBasedPlayer(Player):
         else:
             print("path is empty")
             #print("myPos", path[0].x, path[0].y , " Next Pos: ", path[1].x, path[1].y )
+
+    def dijkstra(self, snake: Snake, food: Food, obstacles: Set[Obstacle]):
+        COST_OF_OBSTACLE = 4
+        food_x, food_y = food.position.x, food.position.y
+        root_x, root_y = snake.get_head_position().x, snake.get_head_position().y
+        infinity = 10000
+        graph_distance = np.full((GRID_WIDTH, GRID_HEIGHT), infinity)
+        graph_cost = np.full((GRID_WIDTH, GRID_HEIGHT), 1)
+        previous = np.full((GRID_WIDTH, GRID_HEIGHT), Position(root_x, root_y))
+        unvisited_coordinate = set()
+
+        for i in range(GRID_WIDTH):
+            for j in range(GRID_HEIGHT):
+                unvisited_coordinate.add(Position(i,j))
+
+        #fill the graph_cost
+        for ob in obstacles:
+            for o in ob:
+                graph_cost[o.position.x, o.position.y] = COST_OF_OBSTACLE
+
+        #initialize graph_distance
+        graph_distance[root_x, root_y] = 0
+        current = graph_distance[root_x, root_y]
+        current_i, current_j = root_x, root_y  
+
+        debug_iteration = 0
+
+        while len(unvisited_coordinate) != 0 and debug_iteration < 90000:
+            debug_iteration += 1
+            
+            print(len(unvisited_coordinate))
+
+            min_distance = 5000
+            i_min = 0
+            j_min = 0
+            if current_i == food_x and current_j == food_y:
+                print("target found", current_i, current_j, food_x, food_y)
+                return previous
+
+            for i in range(-1,2):
+                for j in range(-1,2):
+                    #Do something only if the node is reachable
+                    if self.isLegalLow(Position(current_i, current_j), obstacles, i, j, self.visited, snake):
+                        #If we have a better distance, then replace the previous one by the current distance
+                        if graph_distance[current_i+i, current_j+j] > graph_cost[current_i+i, current_j+j] + current:
+                            graph_distance[current_i+i, current_j+j] = graph_cost[current_i+i, current_j+j] + current
+                            previous[current_i+i, current_j+j] = Position(current_i,current_j)
+
+                        #Search which neighbor has the minimum distance from current to itself AND if this node is not already marked as visited
+                        if min_distance > graph_distance[current_i+i, current_j+j] and isElementExistInSet(unvisited_coordinate, Position(current_i+i, current_j+j)):
+                            i_min, j_min = current_i+i, current_j+j
+                            min_distance = graph_distance[current_i+i, current_j+j]
+            
+            unvisited_coordinate.discard(Position(current_i, current_j))
+            current_i = i_min
+            current_j = j_min
+            current = graph_distance[current_i, current_j]
+        
+        return previous
+
+    def dijkstra_v2(self, snake: Snake, food: Food, obstacles: Set[Obstacle]):
+        root_x, root_y = snake.get_head_position().x, snake.get_head_position().y
+        g = myGraph(GRID_WIDTH*GRID_HEIGHT)
+        graph_distance = np.full((GRID_WIDTH, GRID_HEIGHT), 80000)
+        previous = np.full((GRID_WIDTH, GRID_HEIGHT), Position(0,0))
+        unvisited_nodes = set()
+
+        #build adjacency list
+        for i in range(GRID_WIDTH):
+            for j in range(GRID_HEIGHT):
+                for k in range(-1,2):
+                    for l in range(-1,2):
+                        if isInTheMap(i+k, j+l) and (k==0 or l==0) and not(k==0 and l==0):
+                            if isObstacle(i+k,j+l, obstacles):
+                                g.addEdge(Position(i,j), Position(i+k,j+l), 6)
+                            else :
+                                g.addEdge(Position(i,j), Position(i+k,j+l), 1)
+                unvisited_nodes.add(Position(i,j))
+
+        #print(g.graph[Position(14,6)][neighbors_index][0])
+        
+        graph_distance[root_x,root_y] = 0
+
+        while len(unvisited_nodes) != 0:
+            u = self.getVertexWithMinDistance(graph_distance, unvisited_nodes)
+
+            if u == Position(food.position.x, food.position.y):
+                print("Target Found")
+                return graph_distance, previous
+
+            unvisited_nodes.remove(u)
+        
+            for neighbor in g.graph[u]:
+                if neighbor[0] in unvisited_nodes:
+                    alt = graph_distance[u.x, u.y] + neighbor[1]
+                    if alt < graph_distance[neighbor[0].x, neighbor[0].y]:
+                        graph_distance[neighbor[0].x, neighbor[0].y] = alt
+                        previous[neighbor[0].x, neighbor[0].y] = u
+        
+        return graph_distance, previous
+
+
+            
+        
+
+    def getVertexWithMinDistance(self, graph_distance, unvisited_nodes):
+        min = 80000
+        x_min = 0
+        y_min = 0
+        for node in unvisited_nodes:
+            if min > graph_distance[node.x, node.y]:
+                min = graph_distance[node.x, node.y]
+                x_min = node.x
+                y_min = node.y
+        return Position(x_min, y_min)
 
 
 
@@ -459,7 +630,9 @@ class SearchBasedPlayer(Player):
     
 
     def search_path(self, snake: Snake, food: Food, *obstacles: Set[Obstacle]):
-        blind_search(self, snake, food, obstacles)
+
+        #blind_search(self, snake, food, obstacles)
+        dijkstra_search(self, snake, food, obstacles)
 
 
 
