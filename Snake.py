@@ -367,6 +367,12 @@ def isObstacle(x,y, obstacles):
                 return True
     return False
 
+def isSelfVisited(x,y, visitedNode):
+    for node in visitedNode:
+        if x == node.x and y == node.y:
+            return True
+    return False
+
 def isInTheMap(x,y):
     if x >= 0 and x < GRID_WIDTH and y >= 0 and y < GRID_HEIGHT:
         return True
@@ -556,7 +562,7 @@ class SearchBasedPlayer(Player):
             for j in range(GRID_HEIGHT):
                 for k in range(-1,2):
                     for l in range(-1,2):
-                        if isInTheMap(i+k, j+l) and (k==0 or l==0) and not(k==0 and l==0):
+                        if isInTheMap(i+k, j+l) and (k==0 or l==0) and not(k==0 and l==0) and not(isSelfVisited(i+k, j+l, self.visited)):
                             if isObstacle(i+k,j+l, obstacles):
                                 g.addEdge(Position(i,j), Position(i+k,j+l), 6)
                             else :
